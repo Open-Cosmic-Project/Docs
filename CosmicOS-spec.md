@@ -1,7 +1,9 @@
 # CosmicOS — Especificación de diseño v0.2.9
 
-> **Estado:** borrador de trabajo · **Fecha:** 7 de noviembre de 2026 · **Autor:** Ange^_^
-> **Nombre:** CosmicOS, nombre definitivo. El autor conoce la coincidencia parcial con COSMIC, el entorno de escritorio de System76, y lo mantiene.
+> **Estado:** borrador de trabajo · 
+**Fecha:** 7 de noviembre de 2026 · 
+**Autor:** Ange^_^
+> **Nombre:** CosmicOS, nombre definitivo. (El autor conoce la coincidencia parcial con COSMIC, el entorno de escritorio de System76, y lo mantiene).
 
 ## Cómo leer este documento
 
