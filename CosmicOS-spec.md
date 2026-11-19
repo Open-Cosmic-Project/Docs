@@ -1,9 +1,14 @@
-# CosmicOS — Especificación de diseño v0.2.9
+# CosmicOS — Especificación de diseño v0.3.0
 
-> **Estado:** borrador de trabajo · 
-**Fecha:** 7 de noviembre de 2026 · 
+HEAD
+> **Estado:** borrador de trabajo ·
+**Fecha:** 7 de noviembre de 2026 ·
 **Autor:** Ange^_^
 > **Nombre:** CosmicOS, nombre definitivo. (El autor conoce la coincidencia parcial con COSMIC, el entorno de escritorio de System76, y lo mantiene).
+
+> **Estado:** borrador de trabajo · **Fecha:** 9 de noviembre de 2026 · **Autor:** Ange^_^
+> **Nombre:** CosmicOS, nombre definitivo. El autor conoce la coincidencia parcial con COSMIC, el entorno de escritorio de System76, y lo mantiene.
+ c7a6327 (.)
 
 ## Cómo leer este documento
 
@@ -71,8 +76,10 @@ Para que quien se sume sepa qué falta, esta lista dice qué no está diseñado 
 | Estado | Decisión |
 |---|---|
 | **[Acordado]** | Kernel Linux **modificado (fork)** con soporte únicamente para ARM64 y RISC-V: `arch/` purgado, conservando `arm64`, `riscv`, `arch/Kconfig` y `arch/.gitignore`. Los parámetros de arranque van fijos en la compilación (decisión del autor, 6 de noviembre de 2026). |
-| **[Acordado]** | El fork vive en un repositorio propio de la organización y el manifiesto lo baja con `clone-depth="1"` (8.5). La purga la hace el script reproducible `kernel/scripts/purge-arch.sh`, creado y probado: con él, el árbol compila para arm64 hasta `Image.gz` (7 de noviembre de 2026). |
-| **[Propuesto]** | Ramas por versión upstream (`cosmic/6.x`): etiqueta upstream tal cual, un commit aparte «purga de `arch/`» y los parches encima. Así cada actualización es mecánica y se puede comprobar que el fork es upstream más la purga y nada más. |
+| **[Acordado]** | **El kernel vive dentro del repositorio `Kernel`** de la organización, en `linux/`, junto a `configs/`, `scripts/` y un archivo `UPSTREAM` que anota el origen: Linux 6.18.60 (serie `linux-6.18.y`, LTS), commit `f45ed76d6791cf72ff1265ee93511175bbbc2f18`. Es un único repositorio y una única rama (`eventhorizon`); el manifiesto lo baja con `clone-depth="1"` (8.5). Sustituye a la propuesta de un repositorio `Linux` aparte (decisión del autor, 9 de noviembre de 2026). La purga la hace `kernel/scripts/purge-arch.sh`, creado y probado: con él, el árbol compila para arm64 hasta `Image.gz` (7 de noviembre de 2026). |
+| **[Acordado]** | La purga no se limita a `arch/`: también se eliminó `fs/hostfs` (solo sirve a UML, que se fue con `arch/um`) y se ajustaron a mano las referencias en `fs/Makefile`, `drivers/ras/Kconfig` y `crypto/Kconfig`. En total, unos 14 000 archivos borrados y tres editados (9 de noviembre de 2026). |
+| **[Propuesto]** | **Poder verificar que el fork es upstream más la purga y nada más.** El repositorio guarda el árbol purgado en un único commit (se perdió la separación en commits «upstream», «purga de `arch/`», «hostfs» y «Kconfig/Makefile»; conviene conservar aparte el historial previo). La comprobación es aplicar `purge-arch.sh` sobre el árbol del tag indicado en `UPSTREAM` y comparar con `linux/`. **Pendiente:** que el script cubra también `fs/hostfs` y las tres ediciones, que hoy son manuales. Cada actualización de versión repite el proceso. |
+| **[Acordado]** | **Licencia doble del repositorio `Kernel`:** GPL-2.0 para el kernel (`linux/`, con su `COPYING`) y GPL-3.0 para los scripts, las configuraciones y el resto (11.6). |
 | **[Propuesto]** | **Poda de drivers solo por Kconfig:** no se borran carpetas de `drivers/` (están entrelazados y es lo que más cambia upstream: cada actualización daría conflictos). Se parte de una configuración mínima, se guarda con `make savedefconfig`, se mide el TCB real con los objetos `.o` compilados y en cada versión se revisa `olddefconfig` y `listnewconfig`. Solo se podrían borrar carpetas hoja sin dependientes, con un script reproducible y CI en arm64 y riscv64. |
 | **[Abierto]** | [D-43](#d-43): dónde viven los parámetros fijos, si hay variante libre en los canales de pruebas y qué compilador se usa (GCC o LLVM). |
 | **[Acordado]** | Kernel **[híbrido](#g-hibrido)** en el sentido propio de CosmicOS: Linux monolítico con SELinux integrado en el binario y con algunos drivers **básicos y no críticos delegados al espacio de usuario**. Ver la nota sobre el término más abajo. |
@@ -255,7 +262,6 @@ Es la primera impresión del sistema y, además, una pieza de seguridad: es dond
 - **[Acordado]** **Mientras está perdido:** el cifrado en reposo (fscrypt), el arranque verificado y el bloqueo de pantalla protegen los datos.
 - **[Acordado]** **Localizar, bloquear o borrar a distancia**: opcional, autoalojado y desactivado por defecto, con una orden firmada por el usuario que llega por el gateway push (10.2). Solo funciona si el dispositivo tiene red. ([D-03](#d-03), 22 de octubre de 2026)
 
-
 ### 5.6 Instalación y primer arranque
 
 - **[Acordado]** **Opción A para el primer dispositivo** ([D-44](#d-44), 7 de noviembre de 2026): flasheo **por partición desde el PC**, guiado, y un **asistente de primer uso** en el teléfono. La «imagen única» es un **bundle**: un solo archivo con las imágenes por partición y un plan de flasheo (qué va en qué partición y en qué orden), que ejecutan `cosmic-flash` y `cosmic-fastboot` (11.12).
@@ -403,7 +409,7 @@ El documento no decía cómo se comunican los procesos ([IPC](#g-ipc)). Hoy ya h
 
 ### 7.5 Nombres de los componentes
 
-- **[Acordado]** Convención (confirmada el 22 de octubre de 2026), tomada de los nombres del autor (`cboard`, `cinitd`): los demonios llevan `c` delante y `d` detrás (`c<nombre>d`) y las herramientas y repositorios llevan prefijo `cosmic-` (como `cosmic-splash` y `cosmic-manifest`).
+- **[Acordado]** Convención (confirmada el 22 de octubre de 2026), tomada de los nombres del autor (`cboard`, `cinitd`): los demonios llevan `c` delante y `d` detrás (`c<nombre>d`) y las herramientas llevan prefijo `cosmic-` (como `cosmic-splash` y `cosmic-build`); los repositorios, no: se llaman como su carpeta, con mayúscula inicial (8.7).
 
 | Rol | Nombre propuesto | Estado |
 |---|---|---|
@@ -502,10 +508,13 @@ Los componentes de este documento ya pasan de veinte. Esta tabla separa lo que s
 
 - **[Acordado]** El código del sistema se obtiene con [`repo`](#g-repo) y un manifiesto XML, como en AOSP y OpenHarmony, en lugar de un `git clone` normal repositorio por repositorio (decisión del autor, 21 de octubre de 2026).
 - **[Acordado]** **Por qué encaja:** CosmicOS son muchos repositorios (kernel, launcher, `kernel.root`, SPS, PhanteonWM, CreationDE, demonios, parches de Chromium y de Qt, paquetes de firmware por dispositivo). `repo sync` los baja a la vez y el manifiesto fija la revisión exacta de cada uno: es el **archivo de bloqueo del sistema entero**, justo lo que necesitan las compilaciones reproducibles (8.4).
-- **[Acordado]** **Nombre:** el manifiesto de `repo` es un manifiesto de código fuente, no de permisos. Para no confundirlo con el `Manifest.json` de las apps (6.3), el repositorio se llama `cosmic-manifest` y su archivo principal `default.xml`.
-- **[Acordado]** **Grupos** de `repo` (`launcher`, `ui`, `kernel`, `mobile`, `desktop-dev` y `milestone1`, con todo lo que el primer hito necesita para compilar) para bajar solo lo necesario, y clones parciales o superficiales para el kernel y Chromium, que son enormes.
-- **[Acordado]** **Ramas del manifiesto = canales** (`nebula`, `pulsar`, `singularity`, `quasar`, `eventhorizon`, 20.3); una versión estable es un tag firmado del manifiesto.
-- **[Acordado]** **El kernel viene de un fork propio**, no de kernel.org: el manifiesto apunta al repositorio `linux` de la organización (rama `cosmic/6.x`, `clone-depth="1"`), que lleva `arch/` purgado (3).
+- **[Acordado]** **Nombre:** el manifiesto de `repo` es un manifiesto de código fuente, no de permisos. Para no confundirlo con el `Manifest.json` de las apps (6.3), el repositorio se llama `Cosmic-Manifest` y su archivo principal `default.xml`.
+- **[Acordado]** **Grupos** de `repo`, para bajar solo lo necesario: `desktop-dev` (grupo de trabajo: trae todos los crates de Rust), `mobile` (árbol del dispositivo, sin `sdk`, `tools` ni `Docs`), `milestone1`, `kernel`, `ui` y `launcher`. **`milestone1` es una meta de compilación, no un grupo suficiente para `cargo check`:** el workspace de Cargo exige que todos sus miembros existan en disco (8.7), así que para compilar hay que sincronizar `desktop-dev`. Se usan clones superficiales para el kernel (`clone-depth="1"`) y `sync-c` para bajar solo la rama pedida.
+- **[Acordado]** **Ramas del manifiesto = canales** (`nebula`, `pulsar`, `singularity`, `quasar`, `eventhorizon`, 20.3); una versión estable es un tag firmado del manifiesto. Hoy todo vive en `eventhorizon`, la rama por defecto del manifiesto y de los repositorios (temporal; luego `quasar`, 20.3). La rama `main` se eliminó en todos (7 de noviembre de 2026).
+- **[Acordado]** **El kernel viene de un fork propio**, no de kernel.org, y está dentro del repositorio `Kernel` (3): el manifiesto lo baja con `clone-depth="1"` como cualquier otro repositorio, sin entrada aparte. El fork lleva `arch/` purgado y la purga se puede reproducir (3).
+- **[Acordado]** **Descarga y subida:** el manifiesto descarga por HTTPS (los repositorios son públicos); quien sube cambios usa SSH (`git@github.com:Open-Cosmic-Project/<Repo>.git`). El repositorio `Cosmic-Workspace` coloca en la raíz del árbol, con `<linkfile>`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml` y `.cargo/` (desde `cargo-config/`); `Tools` coloca `cosmic-build`.
+- **[Acordado]** **Comprobado el 9 de noviembre de 2026:** desde un directorio vacío, `repo init` y `repo sync -g desktop-dev` bajan 11 proyectos (el kernel pesa unos 1,6 GB con su `.git`) y `cargo check` compila el hito 1. `cargo check --workspace` compila todo menos `cosmic-fastboot`, que está sin terminar (11.12).
+- **[Acordado]** **Se edita solo en el árbol de desarrollo,** nunca en uno sincronizado con `repo`: los archivos de la raíz son enlaces a `workspace/`, y un cambio local hace fallar el siguiente `repo sync` (aprendido el 7 de noviembre de 2026).
 - **[Acordado]** **Firma:** hasta donde sé, `repo` verifica la firma de su propio código, no la del manifiesto. El tag firmado del manifiesto se verifica (`git verify-tag`) en el script de arranque y en el CI.
 - **[Acordado]** **Contribuciones:** `repo upload` es el flujo de Gerrit; el proyecto usa PR (8.1), así que cada repositorio se contribuye con git normal y el manifiesto solo cambia para fijar revisiones, con un bot que las actualiza.
 - **[Acordado]** **Las apps no usan `repo`:** cada app es un repositorio git propio (8.1) y SPS la referencia por su commit.
@@ -524,29 +533,58 @@ Procedimiento operativo para cuando algo de lo descrito en 8.2 y 8.3 falla. Cubr
 - **[Propuesto]** 6. **Aprender:** informe posterior público en un plazo razonable (propongo 14 días) y un **simulacro anual** de rotación de claves.
 - **[Abierto]** [D-30](#d-30): Canal de contacto y página de estado para incidentes.
 
-
 ### 8.7 Estructura del repositorio de código
 
-- **[Acordado]** **Organización:** `OpenCosmicProject` (OCP) es el nombre oficial de la organización (6 de noviembre de 2026).
-- **[Acordado]** **Un repositorio git por carpeta.** Sustituye a la propuesta de monorepo: cada componente tiene su repositorio y `repo` los une (8.5). Hoy el autor trabaja en un único árbol local, sin publicar, que se parte al subirlo. El mismo esquema se aplicará a otros proyectos de la organización, por definir.
-- **[Acordado]** Estructura de primer nivel del árbol local: `core/` (`cinitd`, `cdevd`, `clauncher`, `corchd`, `kernel.root`), `daemons/` (`cbrokerd`, `cfronterad`, `clogd`, `cnotifd`, `cpowerd`, `cpushd`, `csettingsd`, `cupdated`), `ui/` (`cboard`, `cosmic-splash`, `creationde`, `phanteonwm`), `pkg/sps`, `tools/` (`cosmic-flash`, `cosmic-repo`, `cosmic-build`, `fastboot`, `cad`), `libs/` (`cosmic-core`, `cosmic-usb`), `sdk/cosmic-sdk`, `kernel/` (`configs/`, `scripts/` y `linux/`), `patches/` (`chromium`, `qt`), `device/firmware`, `cosmic-manifest/` y `Docs/`.
-- **[Acordado]** **No se versionan** `target/` (salida de Cargo) ni `kernel/linux/` (el kernel es su propio repositorio, 3). Un `.gitignore` lo deja escrito.
+- **[Acordado]** **Organización:** el proyecto se llama OpenCosmicProject (OCP) y la organización de GitHub es **`Open-Cosmic-Project`**, con guiones (6 y 7 de noviembre de 2026). Los documentos antiguos que escriban `OpenCosmicProject` como identificador deben corregirse.
+- **[Acordado]** **Un repositorio git por carpeta de primer nivel.** Sustituye a la propuesta de monorepo: cada componente tiene su repositorio y `repo` los une (8.5). El 7 de noviembre de 2026 se publicaron todos con un primer commit. El mismo esquema se aplicará a otros proyectos de la organización, por definir.
+- **[Acordado]** Estructura de primer nivel del árbol local: `core/` (`cinitd`, `cdevd`, `clauncher`, `corchd`, `kernel.root`), `daemons/` (`cbrokerd`, `cfronterad`, `clogd`, `cnotifd`, `cpowerd`, `cpushd`, `csettingsd`, `cupdated`), `ui/` (`cboard`, `cosmic-splash`, `creationde`, `phanteonwm`), `pkg/sps`, `tools/` (`cosmic-flash`, `cosmic-repo`, `cosmic-build`, `fastboot`, `cad`), `libs/` (`cosmic-core`, `cosmic-usb`), `sdk/cosmic-sdk`, `kernel/` (`configs/`, `scripts/`, `UPSTREAM` y `linux/`), `patches/` (`chromium`, `qt`), `device/firmware`, `cosmic-manifest/` y `Docs/`.
+
+| Repositorio | Carpeta | Contenido | Grupos |
+|---|---|---|---|
+| `Cosmic-Workspace` | `workspace/` | `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `cargo-config/` | `mobile`, `desktop-dev`, `milestone1` |
+| `Libs` | `libs/` | `cosmic-core`, `cosmic-usb` | `mobile`, `desktop-dev`, `milestone1` |
+| `Core` | `core/` | `cinitd`, `kernel.root`, `clauncher`, `cdevd`, `corchd` | `launcher`, `mobile`, `desktop-dev`, `milestone1` |
+| `Daemons` | `daemons/` | los ocho demonios | `mobile`, `desktop-dev` |
+| `UI` | `ui/` | `phanteonwm`, `creationde`, `cboard`, `cosmic-splash` | `ui`, `mobile`, `desktop-dev` |
+| `Pkg` | `pkg/` | `sps` | `mobile`, `desktop-dev`, `milestone1` |
+| `Tools` | `tools/` | `cosmic-build`, `cosmic-repo`, `cosmic-flash`, `fastboot`, `cad` | `desktop-dev`, `milestone1` |
+| `Kernel` | `kernel/` | `linux/`, `configs/`, `scripts/`, `UPSTREAM` | `kernel`, `mobile`, `desktop-dev` |
+| `Patches` | `patches/` | parches de Chromium y de Qt | `ui`, `desktop-dev`, `mobile` |
+| `Device` | `device/` | firmware y paquetes por dispositivo | `mobile` |
+| `Sdk` | `sdk/` | `cosmic-sdk` | `desktop-dev` |
+| `Docs` | `Docs/` | documentación | `desktop-dev` |
+| `Cosmic-Manifest` | `cosmic-manifest/` (no entra en el árbol sincronizado) | `default.xml` | — |
+| `.github` | — | perfil de la organización, plantillas, `SECURITY.md`, `CONTRIBUTING.md` (8.9) | — |
+
+- **[Acordado]** **No se versionan** `target/` (salida de Cargo) ni `out/`. **`kernel/linux/` sí se versiona:** el kernel está dentro del repositorio `Kernel` (3), y su `.gitignore` ya no lo excluye (9 de noviembre de 2026).
 - **[Propuesto]** Añadir al `.gitignore` `out/`, `.ninja_log` y, si son salida de compilación, `tools/bin/`.
 - **[Acordado]** `Docs/` se queda con mayúscula inicial: no forma parte del ecosistema del sistema, es solo la documentación (decisión del autor, 6 de noviembre de 2026). La regla de minúsculas de 5 es para las rutas del sistema.
 - **[Acordado]** **`Docs/` es práctica, la especificación manda.** La especificación es la única fuente de verdad; los documentos de `Docs/` (arquitectura, repositorios, construcción, kernel, SPS) son guías breves que enlazan a la sección correspondiente en lugar de copiarla, para que no se desincronicen. Los enlaces deben ser relativos y apuntar a la versión vigente.
-- **[Propuesto]** `cosmic-manifest` es un repositorio propio con `default.xml`. Falta decidir qué repositorio contiene los archivos de la raíz del espacio de trabajo (`Cargo.toml`, `Cargo.lock`, `.gitignore`): `cosmic-build`, que los coloca con `<linkfile>`, es la opción propuesta.
-- **[Propuesto]** Nombres: el kernel como `cosmic-linux` (regla `cosmic-` para repositorios) y un único nombre para el gestor de paquetes (`sps`) en todos los documentos.
+- **[Acordado]** `Cosmic-Manifest` es un repositorio propio con `default.xml`. Los archivos de la raíz del espacio de trabajo (`Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/`) viven en `Cosmic-Workspace` (carpeta `workspace/`) y `repo` los coloca con `<linkfile>` (8.5).
+- **[Acordado]** **Nombres de repositorio:** el repositorio se llama como su carpeta, con mayúscula inicial y sin prefijo `cosmic-`, salvo `Cosmic-Manifest` y `Cosmic-Workspace`. El kernel es `Kernel` (no `cosmic-linux`), y hay un único nombre para el gestor de paquetes: `sps` (carpeta `pkg/`, repositorio `Pkg`).
+- **[Acordado]** **Workspace de Cargo:** los miembros se declaran por patrón (`core/[!.]*`, `daemons/[!.]*`, `ui/[!.]*`, `libs/[!.]*`, `pkg/[!.]*`, `sdk/[!.]*`, `tools/[!.]*`). El patrón `[!.]*` y no `*`, porque `*` también encuentra `.git`, que no es un crate. Las carpetas que no son crates de Rust van en `exclude` (`core/corchd`, de Go; `ui/creationde`, de CMake; `tools/bin`; `tools/cosmic-build`). `default-members` es el hito 1 (7.7). Un patrón que no encuentra carpetas falla (8.5).
+- **[Propuesto]** `tools/fastboot` no compila todavía (11.12) y debe ir en `exclude`, como `tools/cad`, hasta que compile: un `cargo check --workspace` que siempre falla no sirve de alarma.
+- **[Acordado]** Cada repositorio lleva su `README.md` y su `LICENSE` (licencias en 11.6). Los `README` describen su contenido y enlazan a la especificación, que es la fuente de verdad.
 - **[Abierto]** [D-40](#d-40): Documentar lo que ya existe en el árbol (`libs/cosmic-core`, `tools/cosmic-flash`, `tools/cosmic-repo`) y su relación con el resto.
 
 ### 8.8 Sistema de construcción (`cosmic-build`)
 
 - **[Acordado]** No se depende de un único Makefile: hay un sistema de construcción común, al estilo de OpenHarmony (que usa GN y Ninja, con un frontend fino), sin Python en nuestras herramientas ni en la imagen. ([D-41](#d-41), 7 de noviembre de 2026)
-- **[Acordado]** **Frontend en Bash** (`cosmic-build`: producto, canal, arquitectura, número de trabajos y meta: `milestone1`, `kernel`, `check`, `clean`) y **Ninja** como motor, con un generador de `build.ninja` en Bash. Se reutiliza Ninja en lugar de escribir un motor propio (principio 9).
+- **[Acordado]** **Frontend y motor.** El frontend de `cosmic-build` (producto, canal, arquitectura, número de trabajos y meta: `milestone1`, `kernel`, `check`, `clean`, `all`) está hoy escrito en **Go** (`cmd/cosmic-build`), con un motor de registro en **C++** (`src/log_engine`) y un lanzador `cosmic-build` en la raíz del árbol; **Ninja** es el motor, con su generador de `build.ninja` en Bash. Sustituye al frontend en Bash que describía la v0.2.9. El autor lo construyó con ayuda de Gemini y verificó los archivos y la compilación. Go queda fuera del TCB (D-04) y el frontend corre en la máquina de desarrollo. Se reutiliza Ninja en lugar de escribir un motor propio (principio 9).
 - **[Propuesto]** **GN** para describir el grafo cuando el proyecto crezca, con plantillas para Cargo, Go, CMake y el kernel. Un motor propio en C++ solo se reconsideraría con razones concretas, como en D-38.
 - **[Acordado]** **Python solo dentro del contenedor de construcción**, y solo si lo exigen Chromium o Qt WebEngine; nunca en la imagen del sistema (7).
 - **[Acordado]** Aceleración: `ccache` y `sccache` si están disponibles, `lld` donde el compilador lo permita y un `target/` compartido de Cargo.
 - **[Acordado]** **Comprobado el 7 de noviembre de 2026:** `./cosmic-build all` compila `cinitd`, `corchd` (Go), `kernel.root`, `clauncher`, `sps` y `cosmic-repo` en 16 s; `milestone1` y `check` terminan bien; el kernel arm64 compila hasta `Image.gz` en 14,9 s (incremental) y, al borrar `Image.gz`, la regla de Ninja lo vuelve a compilar.
-- **[Propuesto]** **Por corregir (importante primero):** (1) **compilación cruzada:** hoy `-target arm64` solo afecta al kernel; Cargo y Go compilan para el PC (los binarios salen en `target/release/`). Hay que pasar `--target aarch64-unknown-linux-gnu` (y `riscv64gc-unknown-linux-gnu`; CinitD, si adopta musl, con el target musl), configurar el enlazador cruzado en `.cargo/config.toml` y compilar Go con `GOOS=linux GOARCH=arm64 CGO_ENABLED=0`; (2) la regla del kernel debe pasar `ARCH` y `CROSS_COMPILE` también al paso de configuración y fallar si `make listnewconfig` devuelve algo (3); (3) las reglas de Cargo, Go y `make` se ejecutan siempre, con `restat`, y es la herramienta de cada una la que decide lo incremental; (4) `cargo build --locked` (y `cargo vendor` para compilaciones sin red); (5) una sola invocación de Cargo con varios `-p`, en lugar de una por componente; (6) un paso de instalación que copie los binarios a un directorio de montaje por producto y arquitectura (`out/<arquitectura>-<producto>/`), de donde sale el bundle (5.6); (7) `clean-kernel` aparte de `clean`, y no compilar nunca como root (hay archivos del árbol propiedad de root); (8) un contenedor con versiones de herramientas fijas (8.4); (9) pasar `shellcheck` a los scripts y probar riscv64; (10) el binario `logengine` no sigue la convención de nombres (7.5); (11) para armar la UKI, `ukify` está escrito en Python: usar `objcopy` con el stub de systemd o aceptarlo solo dentro del contenedor.
+- **[Propuesto]** **Por corregir (importante primero):** (1) **compilación cruzada:** hoy `-target arm64` solo afecta al kernel; Cargo y Go compilan para el PC (los binarios salen en `target/release/`). Hay que pasar `--target aarch64-unknown-linux-gnu` (y `riscv64gc-unknown-linux-gnu`; CinitD, si adopta musl, con el target musl), configurar el enlazador cruzado en `.cargo/config.toml` y compilar Go con `GOOS=linux GOARCH=arm64 CGO_ENABLED=0`; (2) la regla del kernel debe pasar `ARCH` y `CROSS_COMPILE` también al paso de configuración y fallar si `make listnewconfig` devuelve algo (3); (3) las reglas de Cargo, Go y `make` se ejecutan siempre, con `restat`, y es la herramienta de cada una la que decide lo incremental; (4) `cargo build --locked` (y `cargo vendor` para compilaciones sin red); (5) una sola invocación de Cargo con varios `-p`, en lugar de una por componente; (6) un paso de instalación que copie los binarios a un directorio de montaje por producto y arquitectura (`out/<arquitectura>-<producto>/`), de donde sale el bundle (5.6); (7) `clean-kernel` aparte de `clean`, y no compilar nunca como root (hay archivos del árbol propiedad de root); (8) un contenedor con versiones de herramientas fijas (8.4); (9) pasar `shellcheck` a los scripts y probar riscv64; (10) el binario `logengine` no sigue la convención de nombres (7.5); (11) para armar la UKI, `ukify` está escrito en Python: usar `objcopy` con el stub de systemd o aceptarlo solo dentro del contenedor; (12) el canal por defecto es `nebula` y debe ser `eventhorizon`, porque es la única rama que existe (20.3); (13) `tools/cosmic-build/workspace-root/Cargo.toml` es una copia del `Cargo.toml` de la raíz y debe desaparecer (la herramienta lee el de la raíz y nunca modifica un `Cargo.toml` versionado); (14) el lanzador de la raíz debe ser un script, y los binarios compilados no se versionan (ya se retiró uno de 2 MB de `Tools`).
+
+### 8.9 Perfil de la organización, plantillas y CI
+
+- **[Acordado]** El repositorio `.github` (público) guarda el **README de la organización**, con un banner y dos diagramas en SVG animados alojados en el propio repositorio y secciones desplegables. No usa servicios de terceros (ni insignias de `shields.io` ni generadores externos), coherente con la política de privacidad (19). GitHub no admite JavaScript en un README: lo interactivo se limita a lo desplegable y a los enlaces; una página en GitHub Pages queda como posibilidad.
+- **[Acordado]** Plantillas para toda la organización: formularios de issues (`bug.yml` y `propuesta.yml`, con `config.yml` que desactiva los issues en blanco), `PULL_REQUEST_TEMPLATE.md`, `CONTRIBUTING.md` y `SECURITY.md`.
+- **[Acordado]** Un workflow semanal (`update-profile.yml`) regenera con la API de GitHub la tabla de «Actividad reciente» del perfil (lenguaje principal y último push de cada repositorio). Solo se probó con datos de ejemplo.
+- **[Propuesto]** **CI en `Cosmic-Workspace`** (`.github/workflows/ci.yml`): cada noche y en cada push a `eventhorizon`, baja el árbol con `repo sync -g desktop-dev,-kernel` (sin el kernel, para no descargar 1,6 GB) y ejecuta `cargo check --workspace --locked` y `./cosmic-build milestone1`. No se ha ejecutado aún en un servidor limpio, y fallará mientras `cosmic-fastboot` no compile o `Cargo.lock` no esté al día.
+- **[Propuesto]** Coherencia con 11.6: `CONTRIBUTING.md` y la plantilla de PR deben exigir `Signed-off-by` (DCO); `SECURITY.md` debe fijar la divulgación coordinada de 90 días; y falta el código de conducta.
+- **[Propuesto]** Pendiente en los ajustes de la organización: permiso base «Read», 2FA obligatorio, secret scanning, alertas de Dependabot, informe privado de vulnerabilidades (sin él no funciona `SECURITY.md`) y las etiquetas `fallo` y `propuesta`. Dependabot por YAML queda descartado de momento: cada repositorio contiene solo una parte del workspace de Cargo.
 
 ---
 
@@ -802,15 +840,29 @@ Para instalar CosmicOS hay que poder cambiar el sistema del dispositivo, y en la
 
 ### 11.6 Licencia, gobernanza y relaciones
 
-- **[Acordado]** Licencias (20 de octubre de 2026): **[LGPL-3.0](#g-agpl)** para el SDK, **AGPL-3.0** para los módulos de red y todo lo que toque internet o hardware de red, y **GPL-3.0** para el resto del código propio. **GPL-2.0 solo donde sea inevitable.** Nada de licencias permisivas (Apache, MIT, BSD) en código propio.
+- **[Acordado]** **Licencias (revisadas el 9 de noviembre de 2026).** Sustituyen al acuerdo del 20 de octubre («nada de licencias permisivas en código propio»). Una licencia solo copyleft no encaja del todo con el entorno comercial actual, así que se usan licencias [permisivas](#g-permisiva) donde el copyleft no protege nada (configuración, manifiesto, firmware de terceros) y [copyleft](#g-agpl) donde protege la apertura del sistema. El autor dejó las licencias como ya estaban publicadas:
+
+| Repositorio | Licencia | Nota |
+|---|---|---|
+| `Kernel` | GPL-2.0 (`linux/`) y GPL-3.0 (scripts, configuraciones y el resto) | Licencia doble; el kernel no se puede relicenciar |
+| `Core`, `UI`, `Pkg`, `Tools` | GPL-3.0 | |
+| `Daemons` | AGPL-3.0 | Todo el repositorio |
+| `Libs`, `Sdk` | LGPL-2.1 | Ver [D-47](#d-47) |
+| `Patches` | LGPL-2.1 | Ver [D-47](#d-47): un parche debería heredar la licencia del proyecto parcheado |
+| `Cosmic-Workspace`, `Device` | MIT | Configuración y paquetes; el firmware de terceros conserva su licencia |
+| `Cosmic-Manifest` | BSD-3-Clause | |
+| `Docs`, `.github` | CC0 | Documentación y archivos de la organización |
+
 - **[Acordado]** **GPL-2.0 queda donde es obligatoria, y eso incluye el kernel:** el kernel Linux es GPL-2.0-only, con miles de autores, y no se puede relicenciar a GPL-3.0 ni a AGPL. Lo mismo vale para lo que entre en su árbol (incluidos los drivers en Rust y los de red) y para los módulos que se carguen en él. El kernel no puede ir en GPL-3.0; lo que sí se puede es que el **resto** de CosmicOS sea GPL-3.0. En el bootloader manda la licencia del proyecto de origen (U-Boot es GPL-2.0 o posterior, así que puede distribuirse como GPL-3.0). GPL-3.0 y GPL-2.0-only no se combinan en un mismo binario, pero como procesos separados no hay problema. La GPL-2.0 en espacio de usuario solo se acepta si una dependencia la impone.
-- **[Acordado]** **Qué añade la AGPL.** Solo se nota sobre la GPL-3.0 cuando un usuario interactúa con el programa por red: gateway push, «GMS propio» y repositorio. Un demonio cliente de red en AGPL se comporta como GPL-3.0; no hace daño, pero el efecto real está en los servicios.
-- **[Acordado]** **LGPL y arranque bloqueado.** LGPLv3 y GPLv3 exigen que el usuario pueda instalar versiones modificadas en dispositivos de consumo (cláusula anti-tivoización). Es compatible con el modo Desarrollador y con claves inscritas por el usuario (11.4 y 12); no lo sería en un dispositivo de un fabricante aliado que se envíe bloqueado sin esa vía. Además, el SDK debe enlazarse de forma dinámica.
+- **[Acordado]** **Qué añade la AGPL.** Solo se nota sobre la GPL-3.0 cuando un usuario interactúa con el programa por red: gateway push, «GMS propio» y repositorio. Un demonio cliente de red en AGPL se comporta como GPL-3.0; no hace daño, pero el efecto real está en los servicios. Hoy el repositorio `Daemons` entero lleva AGPL-3.0, aunque solo `cpushd` y `cfronterad` son servicios con interacción por red.
+- **[Acordado]** **GPL-3.0 y arranque bloqueado.** GPLv3 y AGPLv3 (y la LGPLv3) exigen que el usuario pueda instalar versiones modificadas en dispositivos de consumo (cláusula anti-tivoización). Es compatible con el modo Desarrollador y con claves inscritas por el usuario (11.4 y 12); no lo sería en un dispositivo de un fabricante aliado que se envíe bloqueado sin esa vía. Es la razón de que el **sistema base siga siendo copyleft de la versión 3** aunque otras partes sean permisivas: una licencia permisiva ahí permitiría vender CosmicOS con el bootloader cerrado. El SDK es LGPL-2.1, que no incluye esa cláusula, y además debe enlazarse de forma dinámica ([D-47](#d-47)).
 - **[Acordado]** **Qt.** Qt cubre la mayoría de los módulos con LGPL-3, pero, hasta donde sé, algunos son solo GPL-3 o comerciales (por ejemplo, Qt Charts, Qt Virtual Keyboard y Qt Wayland Compositor); no lo pude verificar. Aceptado: los módulos solo GPL-3 pueden usarse en los componentes propios de CosmicOS (GPL-3.0), pero no entran en el SDK LGPL que usan las apps de terceros. Revisar módulo por módulo.
 - **[Acordado]** Qt WebEngine está bajo LGPL-3.0 (no es de los módulos solo GPL), así que no contamina ni al componente del sistema ni a las apps; coherente con el SDK LGPL. Por confirmar en la revisión módulo por módulo: la página de módulos de Qt no indica licencias.
 - **[Acordado]** **Revisión módulo por módulo** ([D-23](#d-23), 22 de octubre de 2026): antes de usar un módulo de Qt se revisa su licencia, y el SDK (LGPL) no incluye módulos solo GPL. Main y Space admiten cualquier licencia aprobada por la OSI; el repositorio muestra la licencia de cada app en sus metadatos, sin añadir campos al `Manifest.json` (6.3).
 - **[Acordado]** La regla aplica al **código propio**. Las **dependencias** con licencias permisivas (Smithay es MIT, y gran parte del ecosistema Rust) son compatibles con un proyecto GPL-3.0; vetarlas dejaría fuera casi todo.
-- **[Acordado]** Licencia del SDK: **LGPL**, de modo que las apps que lo enlacen dinámicamente no tienen que ser GPL.
+- **[Acordado]** Licencia del SDK: **LGPL-2.1** (9 de noviembre de 2026; antes se anotó LGPL-3.0), de modo que las apps que lo enlacen dinámicamente no tienen que ser GPL.
+- **[Propuesto]** Cada archivo propio lleva su cabecera `SPDX-License-Identifier`, y el campo `license` de cada crate de Cargo coincide con el `LICENSE` de su repositorio ([D-47](#d-47)). Las licencias de las dependencias se vigilan con `cargo-deny` (aún sin preparar).
+- **[Acordado]** **Consecuencia de DCO sin CLA** (abajo, punto 2 de la gobernanza): nadie puede relicenciar el código ajeno ni ofrecer una doble licencia comercial con él. Esto choca con el interés comercial que motivó la revisión de licencias; ver [D-48](#d-48).
 - **[Acordado]** **Main y Space solo aceptan código abierto;** las apps propietarias van al repositorio MTL (8.1) o a repositorios de terceros (11.5). ([D-13](#d-13), 22 de octubre de 2026)
 - **[Acordado]** **Gobernanza mínima** (adoptada el 20 de octubre de 2026):
   1. **Decisiones:** al principio decide el autor, pero todo cambio que toque el esquema del manifiesto, la ABI, la política de firmas o las licencias pasa por una propuesta pública (RFC) con plazo de comentarios.
@@ -862,6 +914,7 @@ Leyenda: **V** = verificado en una fuente consultada; **?** = no verificado (por
 **Cómo se entra a la matriz:** todo teléfono que se proponga (Fairphone, PinePhone, Volla, etc.) se evalúa con los seis criterios y la regla práctica de arriba; el que no complete la fila de verificaciones no se compra para el proyecto.
 
 **Lectura del borrador:**
+
 - **No hay candidato limpio hoy.** Pixel cumple el criterio 1 (re-bloqueo con clave propia) pero tiene el soporte upstream más flojo; Motorola con Snapdragon tiene el mejor soporte upstream de la tabla, pero el re-bloqueo con clave propia es el eslabón débil. Es justo el conflicto entre los criterios 1 y 6 señalado arriba.
 - **Qué falta para decidir:** (1) comprobar, por modelo concreto de Motorola, si re-bloquea con una clave AVB propia en un equipo de prueba; (2) revisar la página del dispositivo en postmarketOS y el estado de su kernel principal; (3) elegir modelos de gama media-alta de los últimos 2 o 3 años para tener soporte del SoC.
 - **Teléfonos centrados en el usuario (Fairphone y similares):** ver la tabla siguiente; son una familia objetivo y no solo una plataforma de desarrollo.
@@ -913,6 +966,7 @@ Sin apps no hay usuarios, y sin usuarios no hay apps. Borrador de cómo romper e
 - **[Propuesto]** Solo se usan los caminos de desbloqueo que ofrece el propio fabricante (por ejemplo, en Motorola, el código que se obtiene en su web); sin exploits. Si el bootloader no tiene camino, el cliente lo dice. Antes de bloquear, comprueba que la clave de arranque está instalada y se niega si no, porque bloquear con una imagen no reconocida deja el teléfono inservible. Desbloquear borra los datos (11.4).
 - **[Acordado]** **Limitaciones de `cad`:** desactivado por defecto y solo en modo Desarrollador (12); autenticación por clave; sin acceso por red (nada de ADB por TCP) al inicio; solo con el dispositivo desbloqueado por el usuario; demonio propio con nombre `c<nombre>d` y su propio dominio SELinux.
 - **[Acordado]** Aplazados (7.7): no entran en el primer hito. Hasta tener un teléfono físico (D-16), `android-tools` sirve para flashear Motorola y Pixel.
+- **[Propuesto]** **Estado y API (9 de noviembre de 2026):** `cosmic-fastboot` no compila todavía: `commands/mod.rs` declara siete módulos (`flash`, `erase`, `lock`, `unlock`, `reboot`, `getvar`, `oem`) cuyos archivos no existen, y llama a `UsbTransport::scan_fastboot_devices()`, que `cosmic-usb` no tiene (solo `scan_devices()`). Como `cosmic-usb` es la capa común de `cosmic-fastboot` y `cad`, conviene que `scan_devices()` sea genérico y que el filtro «esto es fastboot» (clase e interfaz USB) viva en el cliente. Hasta que compile, queda fuera del workspace (8.7). No conviene rellenar `lock`, `unlock` ni `oem` con funciones vacías que devuelvan «bien»: un `--oem-lock` que no bloquea es peor que uno que falla; usar `todo!()`.
 - **[Abierto]** [D-42](#d-42): nombre del demonio de `cad`, reparto exacto con `cosmic-flash`, soporte de imágenes dispersas (5.6) y soporte de Windows y macOS en el cliente.
 
 ---
@@ -965,7 +1019,7 @@ Sin apps no hay usuarios, y sin usuarios no hay apps. Borrador de cómo romper e
 
 ### 13.1 Estado de implementación
 
-A fecha del 7 de noviembre de 2026 el autor tiene un árbol local, sin publicar (8.7), con un crate o módulo por cada componente y los defconfig del kernel para arm64 y riscv64. **Andamiaje** significa que existe la estructura; no sé cuánto código funcional hay dentro de cada uno, y quien lo sepa debe corregir esta tabla.
+A fecha del 9 de noviembre de 2026 el código está **publicado** en la organización `Open-Cosmic-Project` (8.7), con un crate o módulo por cada componente y los defconfig del kernel para arm64 y riscv64. **Andamiaje** significa que existe la estructura; no sé cuánto código funcional hay dentro de cada uno, y quien lo sepa debe corregir esta tabla.
 
 | Componente | Estado | Primer hito comprobable | Paso |
 |---|---|---|---|
@@ -980,10 +1034,11 @@ A fecha del 7 de noviembre de 2026 el autor tiene un árbol local, sin publicar 
 | WebView del sistema | Solo diseño | Etapa 1 con Qt WebEngine | 4 |
 | PhanteonWM y CreationDE | Andamiaje | Sesión mínima sobre Atomic Linux de escritorio | 5 |
 | `cosmic-splash` | Andamiaje | Cede la pantalla al compositor sin parpadeo (5.4) | 5 |
-| Kernel podado | Compila (fork con `arch/` purgado; arm64 hasta `Image.gz` el 7 de noviembre; riscv64 sin probar) | Configuración endurecida que arranca | 6 |
-| Sistema de construcción (`cosmic-build`) | Funciona, pero los binarios de Rust y Go aún se compilan para el PC y no para ARM64 (8.8) | Compilación cruzada y reproducible en contenedor | 1 (apoyo) |
+| Kernel podado | Publicado en `Kernel` (`linux/`): Linux 6.18.60 LTS con `arch/` y `fs/hostfs` purgados; arm64 compila hasta `Image.gz` (7 de noviembre); riscv64 sin probar; falta comprobar que `purge-arch.sh` reproduce el árbol (3) | Configuración endurecida que arranca | 6 |
+| Sistema de construcción (`cosmic-build`) | Funciona: `milestone1` compila desde un árbol sincronizado con `repo`; frontend en Go; los binarios de Rust y Go aún se compilan para el PC y no para ARM64, y el canal por defecto es `nebula` (8.8) | Compilación cruzada y reproducible en contenedor | 1 (apoyo) |
+| Repositorios, manifiesto y perfil | Publicados: 13 repositorios más `.github`; `repo sync -g desktop-dev` y `cargo check` desde cero funcionan (9 de noviembre) (8.5, 8.9) | El CI nocturno en un servidor limpio | 1 (apoyo) |
 | Instalación y asistente de primer uso | Solo diseño (5.6) | Flashear el bundle en un teléfono y crear el usuario | 7 |
-| `cosmic-fastboot`, `cad`, `cosmic-usb` | Andamiaje (C y Rust) | Flashear un teléfono real (11.12) | 7 |
+| `cosmic-fastboot`, `cad`, `cosmic-usb` | Andamiaje (C y Rust); `cosmic-fastboot` no compila: faltan siete módulos de comandos y una función de `cosmic-usb` (11.12) | Flashear un teléfono real (11.12) | 7 |
 | Dispositivo objetivo | Sin elegir | Primera imagen en hardware real | 7 |
 
 **Por dónde empezar:** el paso 1 (el launcher) y, en paralelo, CinitD y `kernel.root` en QEMU, que no necesitan hardware ni dinero.
@@ -1018,6 +1073,8 @@ Las decisiones pendientes viven aquí, no en el texto: la 14.1 es lo que sigue v
 | <a id="d-43"></a>D-43 | Parámetros fijos y compilador del kernel | 3 | Abierto | (a) ¿Los parámetros fijos viven solo en el `defconfig` (`CONFIG_CMDLINE`) o también en código fuente? (b) ¿Variante con línea de comandos libre en Quasar y EventHorizon, o fija en todos los canales? (c) GCC o LLVM: kCFI, la pila de llamadas sombra y LTO dependen de Clang. Mi voto: (a) `defconfig`, (b) variante libre solo en los canales de pruebas, (c) LLVM si se quieren esas defensas. |
 | <a id="d-39"></a>D-39 | Tareas del PID 1 sin dueño | 7.4 | Abierto | Propuesta refinada en 7.4 (tabla de reparto entre `cinit-early`, CinitD, `kernel.root`, `cdevd` y `cpowerd`, con `cdevd` sin poder cargar módulos y el apagado en dos mitades). Falta la confirmación del autor. |
 | <a id="d-40"></a>D-40 | Documentar lo que ya existe en el árbol | 8.7 | Abierto | `libs/cosmic-core` (con `ipc`, `manifest` y `service`), `tools/cosmic-flash` y `tools/cosmic-repo` no constan en la especificación. Falta saber qué hace cada uno y cómo se relaciona con SPS, con el flasheo de dispositivos (11.4) y con el repositorio (8.1). |
+| <a id="d-47"></a>D-47 | Coherencia de las licencias | 11.6 | Abierto | (a) **`license` por crate:** el workspace declara `GPL-3.0-or-later` y los crates lo heredan, pero `Libs` y `Sdk` son LGPL-2.1, `Daemons` AGPL-3.0 y `Cosmic-Workspace` MIT: cada crate debe declarar la suya (`LGPL-2.1-or-later`, `AGPL-3.0-or-later`, `GPL-3.0-or-later`) en lugar de heredarla. (b) **`Patches` con LGPL-2.1:** un parche debería llevar la licencia del proyecto que parchea (Chromium usa BSD-3-Clause; Qt, hasta donde sé, LGPL-3.0 o GPL, no la 2.1; no lo verifiqué). (c) **SDK LGPL y Rust:** Rust enlaza de forma estática por defecto, y la LGPL exige poder reenlazar con otra versión de la biblioteca; una app Rust cerrada contra el SDK sería poco práctica. Opciones: SDK dinámico (interfaz C), una excepción de enlazado, o una licencia permisiva o MPL-2.0 para el SDK. Mi voto: corregir (a) y (b) ya y decidir (c) cuando exista el SDK. |
+| <a id="d-48"></a>D-48 | DCO sin CLA frente a las licencias permisivas | 11.6 | Abierto | Con DCO y sin CLA (acordado el 20 de octubre) nadie puede relicenciar el código de otros ni ofrecer doble licencia comercial con él. Opción A: mantenerlo (protege el copyleft; sin doble licencia). Opción B: CLA, que permite doble licencia pero concentra poder en el titular y desanima a contribuir. Mi voto: A para los repositorios del sistema base; reconsiderarlo solo para los permisivos, donde no hay nada que relicenciar. Mejor decidirlo antes de aceptar aportes externos. |
 
 ### 14.2 Cerradas
 
@@ -1046,12 +1103,14 @@ Las decisiones pendientes viven aquí, no en el texto: la 14.1 es lo que sigue v
 | <a id="d-24"></a>D-24 | Modo Desarrollador básico | Añade terminal sin root, instalar `.sps` desde archivo y ver logs `json` | 12 |
 | <a id="d-27"></a>D-27 | Convención y nombres de los componentes | Demonios `c<nombre>d`, herramientas `cosmic-`; tabla de 7.5 confirmada; `cosmic-splash` se queda como está | 7.5 |
 | <a id="d-38"></a>D-38 | «Servidor de hardware» tipo Halium | No por ahora; solo se reactiva si se cumplen las tres condiciones de 16.6 | 16.6 |
-| <a id="d-41"></a>D-41 | Sistema de construcción común | Bash y Ninja ahora, GN cuando crezca, sin motor propio y sin Python fuera del contenedor | 8.8 |
+| <a id="d-41"></a>D-41 | Sistema de construcción común | Frontend (hoy en Go; antes en Bash) y Ninja ahora, GN cuando crezca, sin motor propio y sin Python fuera del contenedor | 8.8 |
 | <a id="d-44"></a>D-44 | Instalación y primer arranque | Opción A en el primer dispositivo: flasheo por partición desde el PC (bundle como imagen única) y asistente de primer uso; B y C para más adelante | 5.6 |
+| <a id="d-46"></a>D-46 | Licencias por componente | Permisivas en configuración y manifiesto; copyleft donde protege la apertura del sistema; reparto en la tabla de 11.6 (sustituye a «nada de licencias permisivas») | 11.6 |
+| — | Repositorios, kernel y rama por defecto | Un repositorio por carpeta en `Open-Cosmic-Project`; el kernel dentro de `Kernel` (`linux/`); `eventhorizon` por defecto y luego `quasar` | 3, 8.5, 8.7 |
 | — | `kernel.root`: ventana, `init`, umbral y canal | Lista cerrada de operaciones; `init` solo recoge huérfanos y vigila; aislamiento al quinto fallo con espera creciente; ningún canal para las apps | 3.1 |
 | — | Modelo de compilación del repositorio | Main y Space compilan siempre | 8.1 |
 | — | Paquetes huérfanos | Instalables con aviso visible | 8.3 |
-| — | Obtención del código fuente | `repo` con manifiesto XML (`cosmic-manifest`) | 8.5 |
+| — | Obtención del código fuente | `repo` con manifiesto XML (`Cosmic-Manifest`) | 8.5 |
 | — | Capa Android | Ninguna al inicio | 11 |
 | — | Campos finos del `Manifest.json` | Definitivos tal como están en 6.3 | 6.3 |
 | — | Nombre del tmpfs | `volatile` | 5 |
@@ -1364,7 +1423,7 @@ La accesibilidad es un componente de primer nivel, no un añadido.
 | **Quasar** | Rolling: cada commit es una actualización | Core |
 | **EventHorizon** | Ultraexperimental: aquí se forjan las ideas más locas y, una vez maduras, puede nacer de aquí un LTS | HardCore |
 
-Los nombres se cambiaron el 19 de octubre de 2026. Los canales sirven tanto para el código fuente como para las vías de actualización del sistema (sección 17).
+Los nombres se cambiaron el 19 de octubre de 2026. Los canales sirven tanto para el código fuente como para las vías de actualización del sistema (sección 17). Mientras no haya canales publicados, `eventhorizon` es la rama por defecto de todos los repositorios y del manifiesto; pasará a `quasar` cuando exista una primera publicación (decisión del autor, 7 de noviembre de 2026).
 
 ### 20.4 Puntos por decidir
 
@@ -1411,6 +1470,7 @@ Los nombres se cambiaron el 19 de octubre de 2026. Los canales sirven tanto para
 | v0.2.7 | 6 nov 2026 | `Docs/` se queda con mayúscula (8.7) |
 | v0.2.8 | 7 nov 2026 | Organización `OpenCosmicProject` y un repositorio por carpeta (8.7); kernel como fork con `arch/` purgado, ramas, script reproducible y poda de drivers solo por Kconfig (3); musl estático para `cinit-early` y CinitD (7.1); `default-members` y `cosmic-build` en el primer hito (7.7); sistema de construcción Bash y Ninja, D-41 (8.8); herramientas USB `cosmic-fastboot`, `cad` y `cosmic-usb`, D-42 (11.12); `Docs/` como guías prácticas que enlazan a la spec; estado de implementación actualizado (13.1); nuevo D-43 (parámetros y compilador del kernel) |
 | v0.2.9 | 7 nov 2026 | Instalación y primer arranque, D-44 cerrado con la opción A (5.6); `temp-usr` en RAM sin shell ni contraseña y con dominio SELinux propio; home con el nombre de usuario elegido, reglas del nombre y `$HOME` virtual en el sandbox (12); nuevo D-45 (dónde viven `passwd` y `shadow`); `cosmic-build` compila toda la base, con la lista de correcciones, la compilación cruzada primero (8.8); imágenes dispersas en `cosmic-fastboot` (D-42) |
+| v0.3.0 | 9 nov 2026 | Código publicado: organización `Open-Cosmic-Project`, un repositorio por carpeta con tabla de repositorios, grupos y `eventhorizon` por defecto (8.5, 8.7, 20.3); `Cosmic-Workspace` y `Cosmic-Manifest`, workspace de Cargo por patrón `[!.]*` y `desktop-dev` como grupo de trabajo; el kernel pasa a vivir dentro del repositorio `Kernel` con licencia doble, `UPSTREAM`, purga de `fs/hostfs` y verificación pendiente (3); `cosmic-build` con frontend en Go y lista de correcciones ampliada (8.8); nueva sección 8.9 (perfil, plantillas y CI); licencias revisadas con permisivas donde no protegen nada (11.6, D-46); estado de `cosmic-fastboot` (11.12); estado de implementación actualizado (13.1); nuevos D-47 (coherencia de licencias) y D-48 (DCO sin CLA) |
 
 ---
 
@@ -1471,6 +1531,7 @@ Orden alfabético. Cada término está enlazado desde su primera aparición en e
 - <a id="g-landlock"></a>**Landlock** — Módulo de seguridad del kernel con el que un proceso restringe su propio acceso a archivos y red.
 - <a id="g-leaudio"></a>**LE Audio** — Nueva generación de audio Bluetooth (códec LC3), con soporte para audífonos y ayudas auditivas y para compartir audio entre varios dispositivos.
 - <a id="g-libcamera"></a>**libcamera** — Biblioteca de Linux para controlar cámaras y su procesado de imagen (ISP).
+- <a id="g-permisiva"></a>**Licencia permisiva (MIT, Apache, BSD)** — Licencia que permite usar y modificar el código, incluso dentro de software propietario, sin obligar a publicar los cambios. Frente al copyleft, deja más libertad a las empresas y menos garantía de que el código siga abierto.
 - <a id="g-lsm"></a>**LSM** — Linux Security Module: marco del kernel donde se enchufan módulos de seguridad como SELinux; se compilan dentro del kernel y no son `.ko`.
 - <a id="g-manifest"></a>**Manifest.json** — Archivo de cada paquete `.sps` que declara qué es la app, qué librerías usa y qué permisos solicita (ver 6.3).
 - <a id="g-mcs"></a>**MCS** — Multi-Category Security: categorías de SELinux con las que se separan las apps entre sí.
@@ -1516,4 +1577,4 @@ Orden alfabético. Cada término está enlazado desde su primera aparición en e
 
 ---
 
-*Fin de la especificación v0.2.9. Documento vivo: versionar en el repositorio y actualizar las etiquetas de estado a medida que se cierren las decisiones.*
+*Fin de la especificación v0.3.0. Documento vivo: versionar en el repositorio y actualizar las etiquetas de estado a medida que se cierren las decisiones.*
